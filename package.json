@@ -1,5 +1,5 @@
 {
-  "name": "reachpilot",
+  "name": "pinion",
   "version": "0.2.0",
   "private": true,
   "description": "Self-hosted Social-Scheduler mit MCP-Server für X, LinkedIn, Threads, Reddit, Bluesky und Dev.to",

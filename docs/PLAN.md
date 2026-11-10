@@ -1,4 +1,4 @@
-# ReachPilot – Planung
+# Pinion – Planung
 
 Self-hosted Plattform, die über einen MCP-Server Inhalte für X, LinkedIn, Threads und Reddit plant, zu festen Slots publiziert und Antworten auf eigene Posts in eine Freigabe-Queue holt.
 

@@ -1,13 +1,13 @@
 [Unit]
-Description=ReachPilot Worker (publiziert geplante Posts, holt Antworten)
+Description=Pinion Worker (publiziert geplante Posts, holt Antworten)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=reachpilot
-Group=reachpilot
-WorkingDirectory=/opt/reachpilot
+User=pinion
+Group=pinion
+WorkingDirectory=/opt/pinion
 ExecStart=/usr/bin/node dist/worker/index.js
 Restart=on-failure
 RestartSec=10
@@ -27,7 +27,7 @@ ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
-ReadWritePaths=/var/lib/reachpilot
+ReadWritePaths=/var/lib/pinion
 
 [Install]
 WantedBy=multi-user.target

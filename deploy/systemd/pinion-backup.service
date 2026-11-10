@@ -1,14 +1,14 @@
 [Unit]
-Description=ReachPilot Datenbank-Backup
+Description=Pinion Datenbank-Backup
 
 [Service]
 Type=oneshot
-User=reachpilot
-Group=reachpilot
-WorkingDirectory=/opt/reachpilot
+User=pinion
+Group=pinion
+WorkingDirectory=/opt/pinion
 ExecStart=/usr/bin/node dist/cli/backup.js
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=/var/lib/reachpilot
+ReadWritePaths=/var/lib/pinion

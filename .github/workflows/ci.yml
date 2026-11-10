@@ -16,4 +16,4 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - run: bash -n deploy/install.sh && bash -n deploy/reachpilot
+      - run: bash -n deploy/install.sh && bash -n deploy/pinion

@@ -1,4 +1,4 @@
-# ReachPilot
+# Pinion
 
 Self-hosted Social-Scheduler mit MCP-Server. Claude plant Posts für **X, LinkedIn, Threads, Reddit, Bluesky und Dev.to** in feste Slots, ein Worker publiziert sie pünktlich, Antworten auf eigene Posts landen in einer Inbox und werden nur nach menschlicher Freigabe beantwortet.
 
@@ -42,16 +42,16 @@ npm run review reject --all --kind=reply         # auch Verwerfen geht gebündel
 
 Claude Code:
 ```bash
-claude mcp add reachpilot -- npx tsx /ABSOLUTER/PFAD/reachpilot/src/mcp/server.ts
+claude mcp add pinion -- npx tsx /ABSOLUTER/PFAD/pinion/src/mcp/server.ts
 ```
 
 Claude Desktop (`claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
-    "reachpilot": {
+    "pinion": {
       "command": "npx",
-      "args": ["tsx", "/ABSOLUTER/PFAD/reachpilot/src/mcp/server.ts"]
+      "args": ["tsx", "/ABSOLUTER/PFAD/pinion/src/mcp/server.ts"]
     }
   }
 }
@@ -77,7 +77,7 @@ src/
   cli/status.ts          Überblick (Accounts, Queue, Fehler)
   cli/backup.ts          Online-Backup der SQLite-DB
   db/migrate.ts          Migrationen aus drizzle/ anwenden
-deploy/                  install.sh, systemd-Units, reachpilot-Befehl für den Pi
+deploy/                  install.sh, systemd-Units, pinion-Befehl für den Pi
 test/                    node:test (npm test)
 ```
 

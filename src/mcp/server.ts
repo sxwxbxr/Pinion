@@ -12,13 +12,13 @@ import { INBOX_STATUSES, POST_STATUSES } from "../types.js";
 
 // WICHTIG (stdio): nie auf stdout loggen – nur console.error.
 
-const INSTRUCTIONS = `ReachPilot plant und publiziert Inhalte über offizielle APIs (X, LinkedIn, Threads, Reddit, Bluesky, Dev.to).
+const INSTRUCTIONS = `Pinion plant und publiziert Inhalte über offizielle APIs (X, LinkedIn, Threads, Reddit, Bluesky, Dev.to).
 Ablauf: list_accounts → get/set_posting_slots → schedule_post. Antworten: list_inbox → draft_reply.
 Regeln: Schreibe pro Plattform nativen Content (nicht 1:1 crossposten). Antworten werden NIE direkt publiziert,
 sondern landen in der Freigabe-Queue; der Mensch gibt sie mit \`npm run review\` frei. Dieses Tool hat bewusst
 keine Funktionen für Likes, Follows, Votes oder unaufgeforderte Kommentare unter fremden Posts.`;
 
-const server = new McpServer({ name: "reachpilot", version: "0.1.0" }, { instructions: INSTRUCTIONS });
+const server = new McpServer({ name: "pinion", version: "0.1.0" }, { instructions: INSTRUCTIONS });
 
 const ok = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
 const fail = (message: string) => ({ content: [{ type: "text" as const, text: message }], isError: true });
@@ -260,4 +260,4 @@ server.registerTool(
 );
 
 await server.connect(new StdioServerTransport());
-console.error("ReachPilot MCP-Server läuft (stdio)");
+console.error("Pinion MCP-Server läuft (stdio)");

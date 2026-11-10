@@ -18,12 +18,12 @@ const b64url = (b: Buffer) => b.toString("base64url");
 const isPlatform = (p: string): p is Platform => (PLATFORMS as readonly string[]).includes(p);
 const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 const page = (body: string) =>
-  `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ReachPilot</title>
+  `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pinion</title>
 <style>body{font:15px/1.5 system-ui,sans-serif;max-width:520px;margin:40px auto;padding:0 16px}label{display:block;margin:14px 0 4px;font-weight:600}
 input{width:100%;padding:8px;font:inherit;box-sizing:border-box}small{color:#666}button{margin-top:16px;padding:8px 18px;font:inherit}</style>${body}`;
 
 app.get("/", (c) =>
-  c.html(page(`<h1>ReachPilot – Accounts verbinden</h1><ul>${PLATFORMS.map((p) => `<li><a href="/connect/${p}">${p}</a></li>`).join("")}</ul>`)),
+  c.html(page(`<h1>Pinion – Accounts verbinden</h1><ul>${PLATFORMS.map((p) => `<li><a href="/connect/${p}">${p}</a></li>`).join("")}</ul>`)),
 );
 
 const formToken = randomUUID(); // einfacher CSRF-Schutz für das Formular

@@ -42,4 +42,4 @@ Alles in `<…>` ersetzen. Die Texte auf Englisch lassen, das Formular ist engli
 
 ---
 
-Nach der Freigabe: `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` und `REDDIT_USER_AGENT` in `/opt/reachpilot/.env` eintragen, dann `reachpilot connect` → reddit.
+Nach der Freigabe: `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` und `REDDIT_USER_AGENT` in `/opt/pinion/.env` eintragen, dann `pinion connect` → reddit.

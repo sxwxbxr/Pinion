@@ -1,5 +1,5 @@
 [Unit]
-Description=ReachPilot Backup täglich um 03:15
+Description=Pinion Backup täglich um 03:15
 
 [Timer]
 OnCalendar=*-*-* 03:15:00

@@ -11,7 +11,7 @@ if (existsSync(envFile)) process.loadEnvFile(envFile);
 const bool = z.enum(["true", "false"]).default("false").transform((v) => v === "true");
 
 const Env = z.object({
-  DATABASE_URL: z.string().default("./data/reachpilot.db"),
+  DATABASE_URL: z.string().default("./data/pinion.db"),
   TOKEN_ENC_KEY: z.string().min(1),
   PUBLIC_BASE_URL: z.string().url().default("http://localhost:8787"),
   AUTH_PORT: z.coerce.number().int().default(8787),
@@ -36,7 +36,7 @@ const Env = z.object({
   THREADS_APP_SECRET: z.string().optional(),
   REDDIT_CLIENT_ID: z.string().optional(),
   REDDIT_CLIENT_SECRET: z.string().optional(),
-  REDDIT_USER_AGENT: z.string().default("web:reachpilot:v0.1.0 (by /u/your_username)"),
+  REDDIT_USER_AGENT: z.string().default("web:pinion:v0.1.0 (by /u/your_username)"),
   BLUESKY_SERVICE: z.string().url().default("https://bsky.social"),
 });
 

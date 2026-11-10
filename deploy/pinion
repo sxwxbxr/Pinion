@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Pinion-Befehl auf dem Pi. Läuft immer als Service-User "pinion",
+# damit Datenbank und .env nur diesem User gehören.
+#
+#   pinion status            Überblick: Accounts, Queue, Fehler
+#   pinion review [i|…]      Freigabe-Queue (wie npm run review)
+#   pinion connect           Connect-Server starten (Accounts verbinden), Ctrl+C beendet
+#   pinion mcp               MCP-Server über stdio (für Claude Desktop/Code via SSH)
+#   pinion backup            Datenbank-Backup jetzt
+#   pinion migrate           Datenbank-Schema aktualisieren
+#   pinion logs              Worker-Log live
+set -euo pipefail
+APP_DIR="${PINION_DIR:-/opt/pinion}"
+
+if [[ "$(id -un)" != "pinion" ]]; then
+  case "${1:-}" in
+    logs) exec journalctl -u pinion-worker -f -n 100 ;;
+  esac
+  exec sudo -n -u pinion "$0" "$@"
+fi
+
+cd "$APP_DIR"
+cmd="${1:-status}"; shift || true
+case "$cmd" in
+  status)  exec node dist/cli/status.js "$@" ;;
+  review)  exec node dist/cli/review.js "$@" ;;
+  connect) exec node dist/auth/oauth-server.js "$@" ;;
+  mcp)     exec node dist/mcp/server.js "$@" ;;
+  backup)  exec node dist/cli/backup.js "$@" ;;
+  migrate) exec node dist/db/migrate.js "$@" ;;
+  worker)  exec node dist/worker/index.js "$@" ;;
+  *) echo "Unbekannter Befehl: $cmd (status | review | connect | mcp | backup | migrate | logs)" >&2; exit 1 ;;
+esac

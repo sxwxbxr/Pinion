@@ -5,7 +5,7 @@ import { accounts, inboxItems, posts } from "../db/schema.js";
 import { POST_STATUSES } from "../types.js";
 import { fmt } from "../scheduler/slots.js";
 
-/** Kurzer Überblick: verbundene Accounts, Queue, letzte Fehler. `reachpilot status` */
+/** Kurzer Überblick: verbundene Accounts, Queue, letzte Fehler. `pinion status` */
 const accs = await db.select().from(accounts);
 console.log(`Accounts (${accs.length}):`);
 for (const a of accs) {

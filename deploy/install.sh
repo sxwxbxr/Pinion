@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# ReachPilot auf einem Raspberry Pi (Pi 4/5, 64-bit Raspberry Pi OS oder Ubuntu) installieren oder aktualisieren.
+# Pinion auf einem Raspberry Pi (Pi 4/5, 64-bit Raspberry Pi OS oder Ubuntu) installieren oder aktualisieren.
 # Aufruf aus dem geklonten Repo:   sudo ./deploy/install.sh
 # Idempotent: erneut ausführen = Update (Code kopieren, bauen, migrieren, Worker neu starten).
 set -euo pipefail
 
-APP_DIR=/opt/reachpilot
-DATA_DIR=/var/lib/reachpilot
+APP_DIR=/opt/pinion
+DATA_DIR=/var/lib/pinion
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NODE_MAJOR=22
 LOGIN_USER="${SUDO_USER:-}"
@@ -29,17 +29,17 @@ fi
 echo "Node $(node -v), npm $(npm -v)"
 
 say "Service-User und Verzeichnisse"
-id reachpilot &>/dev/null || useradd --system --home-dir "$DATA_DIR" --shell /usr/sbin/nologin reachpilot
-install -d -o reachpilot -g reachpilot -m 750 "$APP_DIR" "$DATA_DIR" "$DATA_DIR/backups"
+id pinion &>/dev/null || useradd --system --home-dir "$DATA_DIR" --shell /usr/sbin/nologin pinion
+install -d -o pinion -g pinion -m 750 "$APP_DIR" "$DATA_DIR" "$DATA_DIR/backups"
 if [[ -n "$LOGIN_USER" && "$LOGIN_USER" != "root" ]]; then
-  usermod -aG reachpilot "$LOGIN_USER"
+  usermod -aG pinion "$LOGIN_USER"
 fi
 
 say "Code nach $APP_DIR kopieren"
 rsync -a --delete \
   --exclude node_modules --exclude dist --exclude data --exclude .git --exclude .env \
   "$SRC_DIR"/ "$APP_DIR"/
-chown -R reachpilot:reachpilot "$APP_DIR"
+chown -R pinion:pinion "$APP_DIR"
 
 say ".env"
 ENV_FILE="$APP_DIR/.env"
@@ -47,35 +47,35 @@ if [[ ! -f "$ENV_FILE" ]]; then
   cp "$APP_DIR/.env.example" "$ENV_FILE"
   KEY="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")"
   sed -i "s|^TOKEN_ENC_KEY=.*|TOKEN_ENC_KEY=$KEY|" "$ENV_FILE"
-  sed -i "s|^DATABASE_URL=.*|DATABASE_URL=$DATA_DIR/reachpilot.db|" "$ENV_FILE"
+  sed -i "s|^DATABASE_URL=.*|DATABASE_URL=$DATA_DIR/pinion.db|" "$ENV_FILE"
   echo "Neue .env angelegt, TOKEN_ENC_KEY erzeugt."
   echo "⚠  Den TOKEN_ENC_KEY zusätzlich sicher aufbewahren (Passwortmanager). Ohne ihn sind Backups wertlos."
 else
   echo ".env existiert, bleibt unverändert."
 fi
-chown reachpilot:reachpilot "$ENV_FILE"; chmod 600 "$ENV_FILE"
+chown pinion:pinion "$ENV_FILE"; chmod 600 "$ENV_FILE"
 
 say "Abhängigkeiten und Build (dauert auf dem Pi ein paar Minuten)"
-sudo -u reachpilot -H bash -c "cd '$APP_DIR' && npm ci --no-audit --no-fund --loglevel=error && npm run build --silent && npm prune --omit=dev --no-audit --no-fund --loglevel=error"
+sudo -u pinion -H bash -c "cd '$APP_DIR' && npm ci --no-audit --no-fund --loglevel=error && npm run build --silent && npm prune --omit=dev --no-audit --no-fund --loglevel=error"
 
 say "Datenbank migrieren"
-sudo -u reachpilot -H bash -c "cd '$APP_DIR' && node dist/db/migrate.js"
+sudo -u pinion -H bash -c "cd '$APP_DIR' && node dist/db/migrate.js"
 
-say "Befehl 'reachpilot' und sudo-Regel"
-install -m 755 "$APP_DIR/deploy/reachpilot" /usr/local/bin/reachpilot
-cat > /etc/sudoers.d/reachpilot <<SUDO
-# Mitglieder der Gruppe reachpilot dürfen den reachpilot-Befehl als Service-User ausführen
-%reachpilot ALL=(reachpilot) NOPASSWD: /usr/local/bin/reachpilot
+say "Befehl 'pinion' und sudo-Regel"
+install -m 755 "$APP_DIR/deploy/pinion" /usr/local/bin/pinion
+cat > /etc/sudoers.d/pinion <<SUDO
+# Mitglieder der Gruppe pinion dürfen den pinion-Befehl als Service-User ausführen
+%pinion ALL=(pinion) NOPASSWD: /usr/local/bin/pinion
 SUDO
-chmod 440 /etc/sudoers.d/reachpilot
-visudo -cf /etc/sudoers.d/reachpilot >/dev/null || die "sudoers-Regel ungültig"
+chmod 440 /etc/sudoers.d/pinion
+visudo -cf /etc/sudoers.d/pinion >/dev/null || die "sudoers-Regel ungültig"
 
 say "systemd"
 install -m 644 "$APP_DIR"/deploy/systemd/*.service "$APP_DIR"/deploy/systemd/*.timer /etc/systemd/system/
 
 # Backup auf NAS o.ä.: BACKUP_DIR in .env → Schreibrecht für den gehärteten Backup-Dienst freigeben
 BACKUP_DIR_ENV="$(grep -E '^BACKUP_DIR=' "$ENV_FILE" | cut -d= -f2- || true)"
-DROPIN=/etc/systemd/system/reachpilot-backup.service.d
+DROPIN=/etc/systemd/system/pinion-backup.service.d
 if [[ -n "$BACKUP_DIR_ENV" ]]; then
   install -d "$DROPIN"
   cat > "$DROPIN/backup-dir.conf" <<UNIT
@@ -84,23 +84,23 @@ RequiresMountsFor=$BACKUP_DIR_ENV
 [Service]
 ReadWritePaths=$BACKUP_DIR_ENV
 UNIT
-  sudo -u reachpilot test -w "$BACKUP_DIR_ENV" || echo "⚠  $BACKUP_DIR_ENV ist für User reachpilot nicht beschreibbar (siehe docs/PI-SETUP.md, Backup aufs NAS)"
+  sudo -u pinion test -w "$BACKUP_DIR_ENV" || echo "⚠  $BACKUP_DIR_ENV ist für User pinion nicht beschreibbar (siehe docs/PI-SETUP.md, Backup aufs NAS)"
   echo "Backups gehen nach $BACKUP_DIR_ENV"
 else
   rm -rf "$DROPIN"
 fi
 systemctl daemon-reload
-systemctl enable --now reachpilot-backup.timer >/dev/null
-systemctl enable reachpilot-worker >/dev/null
-systemctl restart reachpilot-worker
+systemctl enable --now pinion-backup.timer >/dev/null
+systemctl enable pinion-worker >/dev/null
+systemctl restart pinion-worker
 sleep 2
-systemctl is-active --quiet reachpilot-worker && echo "Worker läuft ✓" || { journalctl -u reachpilot-worker -n 30 --no-pager; die "Worker startet nicht"; }
+systemctl is-active --quiet pinion-worker && echo "Worker läuft ✓" || { journalctl -u pinion-worker -n 30 --no-pager; die "Worker startet nicht"; }
 
 say "Fertig"
 cat <<TXT
 Nächste Schritte:
-  1. Neu einloggen (Gruppe reachpilot wird aktiv), dann:  reachpilot status
-  2. Accounts verbinden:  reachpilot connect
+  1. Neu einloggen (Gruppe pinion wird aktiv), dann:  pinion status
+  2. Accounts verbinden:  pinion connect
      Vom Laptop:  ssh -L 8787:127.0.0.1:8787 $LOGIN_USER@$(hostname)  → http://127.0.0.1:8787
      (über Tailscale: Hostname aus "tailscale status", z.B. $(hostname).<tailnet>.ts.net)
   3. Claude Desktop/Code einbinden: siehe docs/PI-SETUP.md
