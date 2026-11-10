@@ -1,0 +1,14 @@
+[Unit]
+Description=Pinion Datenbank-Backup
+
+[Service]
+Type=oneshot
+User=pinion
+Group=pinion
+WorkingDirectory=/opt/pinion
+ExecStart=/usr/bin/node dist/cli/backup.js
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/pinion

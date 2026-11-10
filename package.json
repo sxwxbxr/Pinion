@@ -1,0 +1,44 @@
+{
+  "name": "pinion",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Self-hosted Social-Scheduler mit MCP-Server für X, LinkedIn, Threads, Reddit, Bluesky und Dev.to",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "auth": "tsx src/auth/oauth-server.ts",
+    "worker": "tsx src/worker/index.ts",
+    "mcp": "tsx src/mcp/server.ts",
+    "review": "tsx src/cli/review.ts",
+    "db:push": "node -e \"require('fs').mkdirSync('data',{recursive:true})\" && drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "gen:key": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p .",
+    "test": "node --import tsx --import ./test/setup.ts --test --test-reporter=spec \"test/**/*.test.ts\"",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "check": "npm run typecheck && npm test",
+    "backup": "tsx src/cli/backup.ts",
+    "status": "tsx src/cli/status.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "@modelcontextprotocol/sdk": "^1.20.0",
+    "better-sqlite3": "^12.0.0",
+    "drizzle-orm": "^0.44.0",
+    "hono": "^4.6.0",
+    "luxon": "^3.5.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/luxon": "^3.4.0",
+    "@types/node": "^22.0.0",
+    "drizzle-kit": "^0.31.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
