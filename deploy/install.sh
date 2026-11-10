@@ -72,6 +72,23 @@ visudo -cf /etc/sudoers.d/reachpilot >/dev/null || die "sudoers-Regel ungültig"
 
 say "systemd"
 install -m 644 "$APP_DIR"/deploy/systemd/*.service "$APP_DIR"/deploy/systemd/*.timer /etc/systemd/system/
+
+# Backup auf NAS o.ä.: BACKUP_DIR in .env → Schreibrecht für den gehärteten Backup-Dienst freigeben
+BACKUP_DIR_ENV="$(grep -E '^BACKUP_DIR=' "$ENV_FILE" | cut -d= -f2- || true)"
+DROPIN=/etc/systemd/system/reachpilot-backup.service.d
+if [[ -n "$BACKUP_DIR_ENV" ]]; then
+  install -d "$DROPIN"
+  cat > "$DROPIN/backup-dir.conf" <<UNIT
+[Unit]
+RequiresMountsFor=$BACKUP_DIR_ENV
+[Service]
+ReadWritePaths=$BACKUP_DIR_ENV
+UNIT
+  sudo -u reachpilot test -w "$BACKUP_DIR_ENV" || echo "⚠  $BACKUP_DIR_ENV ist für User reachpilot nicht beschreibbar (siehe docs/PI-SETUP.md, Backup aufs NAS)"
+  echo "Backups gehen nach $BACKUP_DIR_ENV"
+else
+  rm -rf "$DROPIN"
+fi
 systemctl daemon-reload
 systemctl enable --now reachpilot-backup.timer >/dev/null
 systemctl enable reachpilot-worker >/dev/null
@@ -84,7 +101,8 @@ cat <<TXT
 Nächste Schritte:
   1. Neu einloggen (Gruppe reachpilot wird aktiv), dann:  reachpilot status
   2. Accounts verbinden:  reachpilot connect
-     Vom Laptop:  ssh -L 8787:127.0.0.1:8787 $LOGIN_USER@$(hostname).local  → http://127.0.0.1:8787
+     Vom Laptop:  ssh -L 8787:127.0.0.1:8787 $LOGIN_USER@$(hostname)  → http://127.0.0.1:8787
+     (über Tailscale: Hostname aus "tailscale status", z.B. $(hostname).<tailnet>.ts.net)
   3. Claude Desktop/Code einbinden: siehe docs/PI-SETUP.md
 Update später: git pull && sudo ./deploy/install.sh
 TXT

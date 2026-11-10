@@ -3,6 +3,7 @@
 Self-hosted Social-Scheduler mit MCP-Server. Claude plant Posts für **X, LinkedIn, Threads, Reddit, Bluesky und Dev.to** in feste Slots, ein Worker publiziert sie pünktlich, Antworten auf eigene Posts landen in einer Inbox und werden nur nach menschlicher Freigabe beantwortet.
 
 Planung, Plattform-Einschränkungen und Roadmap: [`docs/PLAN.md`](docs/PLAN.md)
+Reddit-API-Antrag (Entwurf): [`docs/REDDIT-ANTRAG.md`](docs/REDDIT-ANTRAG.md)
 Betrieb auf dem Raspberry Pi: [`docs/PI-SETUP.md`](docs/PI-SETUP.md) (`sudo ./deploy/install.sh`)
 
 ## Setup

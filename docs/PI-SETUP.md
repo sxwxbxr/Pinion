@@ -1,14 +1,15 @@
 # ReachPilot auf dem Raspberry Pi
 
 ```
- Laptop                                   Raspberry Pi (64-bit)
+ Laptop / Handy (Tailscale)               Raspberry Pi 5 (Tailscale)
  ┌──────────────────────┐   SSH (stdio)   ┌──────────────────────────────────────┐
  │ Claude Desktop/Code  │────────────────▶│ reachpilot mcp      (bei Bedarf)     │
  │                      │                 │ reachpilot-worker   (systemd, immer) │
  │ Browser 127.0.0.1    │──ssh -L 8787──▶ │ reachpilot connect  (nur zum Verbinden)
  └──────────────────────┘                 │ SQLite /var/lib/reachpilot           │
-                                          │ Backup täglich 03:15, 14 Stück       │
+                                          │ Backup täglich 03:15 ──────────────▶ NAS
                                           └──────────────────────────────────────┘
+ Nichts ist öffentlich erreichbar. Alles läuft über dein Tailnet.
 ```
 
 | Pfad | Inhalt |
@@ -20,10 +21,12 @@
 
 ## 1. Installieren (ca. 10 min)
 
-Voraussetzung: Pi 4/5 mit **Raspberry Pi OS Lite 64-bit** (Raspberry Pi Imager, SSH aktivieren), per SSH erreichbar.
+Voraussetzung: Pi 4/5 mit **Raspberry Pi OS 64-bit**, per SSH erreichbar. ReachPilot braucht ca. 150 MB RAM und läuft problemlos neben NAS und Plex.
+
+**Tailscale** (falls noch nicht auf dem Pi): `curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up --ssh`. Mit `--ssh` brauchst du keine SSH-Keys, Tailscale regelt den Zugang. Den Namen des Pi zeigt `tailscale status` (z.B. `pi`, voll `pi.<tailnet>.ts.net`). Im Folgenden steht `<pi>` dafür.
 
 ```bash
-ssh <user>@<pi>.local
+ssh <user>@<pi>
 git clone https://github.com/<owner>/reachpilot.git && cd reachpilot
 sudo ./deploy/install.sh
 exit                      # einmal neu einloggen, damit die Gruppe "reachpilot" aktiv wird
@@ -37,7 +40,7 @@ Das Skript installiert Node 22, legt den System-User `reachpilot` an, baut, migr
 
 ```bash
 # Laptop: Tunnel öffnen und auf dem Pi den Connect-Server starten
-ssh -L 8787:127.0.0.1:8787 <user>@<pi>.local -t reachpilot connect
+ssh -L 8787:127.0.0.1:8787 <user>@<pi> -t reachpilot connect
 # Browser auf dem Laptop: http://127.0.0.1:8787
 ```
 
@@ -45,28 +48,43 @@ ssh -L 8787:127.0.0.1:8787 <user>@<pi>.local -t reachpilot connect
 |---|---|---|
 | **Bluesky** | Handle + App-Passwort | bsky.app → Einstellungen → Datenschutz und Sicherheit → App-Passwörter |
 | **Dev.to** | API-Key | dev.to/settings/extensions → DEV Community API Keys |
-| **LinkedIn** | Client-ID + Secret in `.env` | linkedin.com/developers → App → Produkte „Sign In with LinkedIn“ + „Share on LinkedIn“; Redirect-URL `http://localhost:8787/callback/linkedin` |
-| Threads, X | wie LinkedIn, Redirect muss HTTPS sein | kommt in Etappe 4 mit Cloudflare Tunnel |
+| **LinkedIn** | Client-ID + Secret in `.env` | siehe unten |
+| Threads, X | wie LinkedIn, Redirect muss öffentlich per HTTPS erreichbar sein | Etappe 4, kurz per `tailscale funnel 8787` nur während des Verbindens |
 | Reddit | API-Antrag (Responsible Builder Policy) | reddit.com/wiki/api |
 
-LinkedIn-Credentials eintragen: `sudo -u reachpilot nano /opt/reachpilot/.env`, danach `sudo systemctl restart reachpilot-worker`.
+### Bluesky-App-Passwort (2 min)
+1. bsky.app → **Einstellungen → Datenschutz und Sicherheit → App-Passwörter → Hinzufügen**
+2. Name `ReachPilot`, „Zugriff auf Direktnachrichten“ **nicht** anhaken
+3. Passwort (`xxxx-xxxx-xxxx-xxxx`) ins Connect-Formular kopieren. Widerrufen geht jederzeit an derselben Stelle.
+
+### LinkedIn-App (10 min)
+1. [linkedin.com/developers/apps](https://www.linkedin.com/developers/apps) → **Create app**. LinkedIn verlangt eine Company Page als Besitzer: eine eigene, leere Seite reicht (z.B. „sweber.dev“).
+2. Tab **Products**: „Sign In with LinkedIn using OpenID Connect“ und „Share on LinkedIn“ anfordern (werden meist sofort freigegeben).
+3. Tab **Auth** → Authorized redirect URLs: `http://localhost:8787/callback/linkedin`
+4. Client ID und Primary Client Secret eintragen:
+   ```bash
+   sudo -u reachpilot nano /opt/reachpilot/.env     # LINKEDIN_CLIENT_ID=… / LINKEDIN_CLIENT_SECRET=…
+   ```
+5. `reachpilot connect` neu starten, im Browser auf „linkedin“ klicken. Der Token gilt 60 Tage, danach einmal neu verbinden.
+
+Der Redirect auf `localhost` funktioniert, weil der Browser über den SSH-Tunnel mit dem Pi spricht. Dafür muss nichts öffentlich sein.
 
 Prüfen: `reachpilot status`
 
 ## 3. Claude einbinden (MCP über SSH)
 
-Voraussetzung: SSH-Login per Key ohne Passwortabfrage (`ssh-copy-id <user>@<pi>.local`).
+Voraussetzung: SSH ohne Passwortabfrage. Mit `tailscale up --ssh` ist das schon erledigt, sonst `ssh-copy-id <user>@<pi>`.
 
 **Claude Code**
 ```bash
-claude mcp add reachpilot -- ssh -T <user>@<pi>.local reachpilot mcp
+claude mcp add reachpilot -- ssh -T <user>@<pi> reachpilot mcp
 ```
 
 **Claude Desktop** (`claude_desktop_config.json`)
 ```json
 {
   "mcpServers": {
-    "reachpilot": { "command": "ssh", "args": ["-T", "<user>@<pi>.local", "reachpilot", "mcp"] }
+    "reachpilot": { "command": "ssh", "args": ["-T", "<user>@<pi>", "reachpilot", "mcp"] }
   }
 }
 ```
@@ -91,4 +109,15 @@ Claude: „Plane auf LinkedIn einen Post für morgen 08:30.“
 
 **Wiederherstellen:** `sudo systemctl stop reachpilot-worker`, Backup nach `/var/lib/reachpilot/reachpilot.db` kopieren (Owner `reachpilot`), Worker starten. Gleicher `TOKEN_ENC_KEY` nötig.
 
-**SD-Karte:** SQLite im WAL-Modus schreibt wenig, trotzdem ist eine SSD (USB oder NVMe beim Pi 5) langlebiger.
+## Backup aufs NAS
+
+Die SD-Karte ist der Teil, der am ehesten kaputtgeht. Deshalb sollten die Backups aufs NAS gehen.
+
+1. NAS-Freigabe auf dem Pi einhängen, z.B. per `/etc/fstab` (NFS oder SMB). Wichtig ist, dass der User `reachpilot` darin schreiben darf. Bei SMB geht das mit `uid=reachpilot,gid=reachpilot`.
+2. `sudo mkdir -p /mnt/nas/backups/reachpilot && sudo chown reachpilot: /mnt/nas/backups/reachpilot`
+3. In `/opt/reachpilot/.env`: `BACKUP_DIR=/mnt/nas/backups/reachpilot`
+4. `sudo ./deploy/install.sh` erneut ausführen (gibt dem Backup-Dienst Schreibrecht), testen mit `reachpilot backup`
+
+Hängt das NAS beim Backup nicht, lässt systemd den Lauf aus und holt ihn nach (`Persistent=true`).
+
+**SD-Karte:** SQLite im WAL-Modus schreibt wenig. Läuft auf dem Pi 5 aber ohnehin schon Plex, lohnt sich eine NVMe-SSD (Pi-5-HAT) fürs System, weil sie langlebiger und schneller ist.
