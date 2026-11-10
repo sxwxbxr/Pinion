@@ -60,3 +60,12 @@ test("LinkedIn: Tageslimit 1 Post", async () => {
     assert.match((await validateDraft({ account, kind: "post", text: "b", scheduledAt: later })).join(), /Tageslimit/);
   }
 });
+
+test("Bearbeiteter, schon freigegebener Eintrag muss neu freigegeben werden", async () => {
+  const { statusAfterEdit } = await import("../src/scheduler/policy.js");
+  assert.equal(statusAfterEdit({ kind: "reply", status: "scheduled" }, "bluesky", true), "pending_approval");
+  assert.equal(statusAfterEdit({ kind: "post", status: "scheduled" }, "reddit", true), "pending_approval");
+  assert.equal(statusAfterEdit({ kind: "post", status: "scheduled" }, "bluesky", true), null); // Bluesky-Posts brauchen keine Freigabe
+  assert.equal(statusAfterEdit({ kind: "reply", status: "scheduled" }, "bluesky", false), null); // nur Zeit geändert
+  assert.equal(statusAfterEdit({ kind: "reply", status: "pending_approval" }, "bluesky", true), null);
+});

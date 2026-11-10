@@ -3,7 +3,7 @@ import { createInterface, type Interface } from "node:readline";
 import { and, asc, eq, like } from "drizzle-orm";
 import { audit, db } from "../db/client.js";
 import { accounts, inboxItems, posts, type Account, type InboxItem, type Post } from "../db/schema.js";
-import { fmt } from "../scheduler/slots.js";
+import { approvalTime, fmt } from "../scheduler/slots.js";
 import { PLATFORMS, POST_KINDS, type Platform, type PostKind } from "../types.js";
 
 /**
@@ -90,10 +90,15 @@ function show({ p, a, i }: Row, pos?: string) {
 }
 
 async function decide(row: Row, approve: boolean) {
-  const { p } = row;
+  const { p, a } = row;
   if (approve) {
-    const scheduledAt = p.kind === "reply" || p.scheduledAt.getTime() < Date.now() ? new Date() : p.scheduledAt;
+    const scheduledAt = await approvalTime(a, p);
+    if (!scheduledAt) {
+      console.log(`  ⏸  ${p.id.slice(0, 8)} bleibt in der Queue: Tageslimit oder Mindestabstand erreicht, kein freier Slot.`);
+      return;
+    }
     await db.update(posts).set({ status: "scheduled", scheduledAt }).where(and(eq(posts.id, p.id), eq(posts.status, "pending_approval")));
+    if (scheduledAt.getTime() !== p.scheduledAt.getTime() && p.kind === "post") console.log(`  ↻ ${p.id.slice(0, 8)} neu geplant: ${fmt(scheduledAt, a.timezone)}`);
   } else {
     await db.update(posts).set({ status: "cancelled" }).where(and(eq(posts.id, p.id), eq(posts.status, "pending_approval")));
     if (p.inboxItemId) await db.update(inboxItems).set({ status: "new" }).where(eq(inboxItems.id, p.inboxItemId));

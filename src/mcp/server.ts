@@ -1,12 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { IANAZone } from "luxon";
 import { z } from "zod";
 import { getAccount } from "../accounts.js";
 import { connectors } from "../connectors/index.js";
 import { audit, db } from "../db/client.js";
 import { accounts, inboxItems, postingSlots, posts } from "../db/schema.js";
-import { contentHash, postNeedsApproval, RULES, validateDraft } from "../scheduler/policy.js";
+import { contentHash, postNeedsApproval, RULES, statusAfterEdit, validateDraft } from "../scheduler/policy.js";
 import { fmt, nextFreeSlot } from "../scheduler/slots.js";
 import { INBOX_STATUSES, POST_STATUSES } from "../types.js";
 
@@ -73,6 +74,7 @@ server.registerTool(
   },
   guard(async ({ accountId, timezone, slots }) => {
     await getAccount(accountId);
+    if (timezone && !IANAZone.isValidZone(timezone)) return fail(`Unbekannte Zeitzone '${timezone}' – IANA-Name wie Europe/Zurich angeben.`);
     db.transaction((tx) => {
       if (timezone) tx.update(accounts).set({ timezone }).where(eq(accounts.id, accountId)).run();
       tx.delete(postingSlots).where(eq(postingSlots.accountId, accountId)).run();
@@ -136,9 +138,11 @@ server.registerTool(
     const next = { text: text ?? post.text, title: title ?? post.title, scheduledAt: at ? new Date(at) : post.scheduledAt };
     const problems = await validateDraft({ account, kind: post.kind, subreddit: post.subreddit, ...next }, postId);
     if (problems.length) return fail("Nicht geändert:\n- " + problems.join("\n- "));
-    await db.update(posts).set({ ...next, contentHash: contentHash(next.text, next.title) }).where(eq(posts.id, postId));
-    audit("mcp", "update_post", { postId });
-    return ok({ postId, scheduledAt: fmt(next.scheduledAt, account.timezone) });
+    const contentChanged = next.text !== post.text || next.title !== post.title;
+    const status = statusAfterEdit(post, account.platform, contentChanged) ?? post.status;
+    await db.update(posts).set({ ...next, status, contentHash: contentHash(next.text, next.title) }).where(eq(posts.id, postId));
+    audit("mcp", "update_post", { postId, status });
+    return ok({ postId, status, scheduledAt: fmt(next.scheduledAt, account.timezone) });
   }),
 );
 

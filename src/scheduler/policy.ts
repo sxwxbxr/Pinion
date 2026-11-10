@@ -38,6 +38,16 @@ export function postNeedsApproval(platform: Platform): boolean {
   return env.APPROVAL_MODE === "all" || env.APPROVAL_POSTS_PLATFORMS.includes(platform);
 }
 
+/** Freigegebene Einträge, deren Inhalt danach geändert wird, müssen erneut freigegeben werden. */
+export function statusAfterEdit(
+  post: { kind: PostKind; status: string },
+  platform: Platform,
+  contentChanged: boolean,
+): "pending_approval" | "scheduled" | null {
+  if (post.status !== "scheduled" || !contentChanged) return null; // nichts ändern
+  return post.kind === "reply" || postNeedsApproval(platform) ? "pending_approval" : null;
+}
+
 const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 export function textLength(text: string, platform: Platform): number {
   return RULES[platform].countGraphemes ? [...segmenter.segment(text)].length : [...text].length;

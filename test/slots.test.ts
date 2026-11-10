@@ -21,3 +21,35 @@ test("Ohne Slots gibt es keinen Vorschlag", async () => {
   const account = await makeAccount("linkedin");
   assert.equal(await nextFreeSlot(account), null);
 });
+
+test("Bulk-Freigabe überfälliger Posts hält Mindestabstand ein statt alles sofort zu senden", async () => {
+  const { approvalTime } = await import("../src/scheduler/slots.js");
+  const { posts } = await import("../src/db/schema.js");
+  const { contentHash } = await import("../src/scheduler/policy.js");
+  const account = await makeAccount("bluesky");
+  await db.insert(postingSlots).values([1, 2, 3, 4, 5, 6, 7].flatMap((weekday) => ["09:00", "15:00"].map((time) => ({ accountId: account.id, weekday, time }))));
+  const now = new Date();
+  const past = new Date(now.getTime() - 3_600_000);
+  const ids: string[] = [];
+  for (const t of ["a", "b"]) {
+    const [r] = await db.insert(posts).values({ accountId: account.id, kind: "post", text: t, status: "pending_approval", scheduledAt: past, contentHash: contentHash(t) }).returning();
+    ids.push(r!.id);
+  }
+  const { eq } = await import("drizzle-orm");
+  const first = await approvalTime(account, { id: ids[0]!, kind: "post", scheduledAt: past }, now);
+  assert.ok(first && first.getTime() >= now.getTime(), "nie in der Vergangenheit");
+  await db.update(posts).set({ status: "scheduled", scheduledAt: first! }).where(eq(posts.id, ids[0]!));
+  const second = await approvalTime(account, { id: ids[1]!, kind: "post", scheduledAt: past }, now);
+  assert.ok(second, "zweiter Post bekommt einen späteren Slot");
+  assert.ok(Math.abs(second!.getTime() - first!.getTime()) >= 120 * 60_000, "mindestens 120 min Abstand (Bluesky)");
+});
+
+test("Antwort über dem Tageslimit bleibt in der Queue", async () => {
+  const { approvalTime } = await import("../src/scheduler/slots.js");
+  const { posts } = await import("../src/db/schema.js");
+  const { contentHash } = await import("../src/scheduler/policy.js");
+  const account = await makeAccount("bluesky");
+  const now = new Date();
+  await db.insert(posts).values(Array.from({ length: 30 }, (_, i) => ({ accountId: account.id, kind: "reply" as const, text: `r${i}`, status: "published" as const, scheduledAt: now, contentHash: contentHash(`r${i}`) })));
+  assert.equal(await approvalTime(account, { id: "x", kind: "reply", scheduledAt: now }, now), null);
+});
