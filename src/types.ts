@@ -1,4 +1,4 @@
-export const PLATFORMS = ["x", "linkedin", "threads", "reddit"] as const;
+export const PLATFORMS = ["x", "linkedin", "threads", "reddit", "bluesky", "devto"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 
 export const POST_KINDS = ["post", "reply"] as const;

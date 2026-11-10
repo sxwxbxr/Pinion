@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, count, eq, gt, gte, inArray, lt, ne } from "drizzle-orm";
 import { DateTime } from "luxon";
+import { env } from "../config.js";
 import { db } from "../db/client.js";
 import { accounts, posts, type Account } from "../db/schema.js";
 import type { Platform, PostKind } from "../types.js";
@@ -14,6 +15,9 @@ export interface PlatformRules {
   maxChars: number;
   maxTitleChars?: number;
   needsSubreddit?: boolean;
+  needsTitle?: boolean;
+  /** Bluesky zählt Grapheme (ein Emoji = 1), die anderen grob Codepoints. */
+  countGraphemes?: boolean;
   maxPostsPerDay: number;
   maxRepliesPerDay: number;
   minGapMinutes: number;
@@ -23,8 +27,21 @@ export const RULES: Record<Platform, PlatformRules> = {
   x: { maxChars: 280, maxPostsPerDay: 6, maxRepliesPerDay: 30, minGapMinutes: 90 },
   threads: { maxChars: 500, maxPostsPerDay: 5, maxRepliesPerDay: 30, minGapMinutes: 120 },
   linkedin: { maxChars: 3000, maxPostsPerDay: 1, maxRepliesPerDay: 20, minGapMinutes: 720 },
-  reddit: { maxChars: 40000, maxTitleChars: 300, needsSubreddit: true, maxPostsPerDay: 1, maxRepliesPerDay: 15, minGapMinutes: 720 },
+  reddit: { maxChars: 40000, maxTitleChars: 300, needsSubreddit: true, needsTitle: true, maxPostsPerDay: 1, maxRepliesPerDay: 15, minGapMinutes: 720 },
+  bluesky: { maxChars: 300, countGraphemes: true, maxPostsPerDay: 5, maxRepliesPerDay: 30, minGapMinutes: 120 },
+  // Dev.to: Artikel (Markdown). Kommentare kann die API nur lesen, nicht schreiben.
+  devto: { maxChars: 100000, maxTitleChars: 128, needsTitle: true, maxPostsPerDay: 1, maxRepliesPerDay: 0, minGapMinutes: 2880 },
 };
+
+/** Eigene Posts brauchen Freigabe, wenn APPROVAL_MODE=all oder die Plattform in APPROVAL_POSTS_PLATFORMS steht. */
+export function postNeedsApproval(platform: Platform): boolean {
+  return env.APPROVAL_MODE === "all" || env.APPROVAL_POSTS_PLATFORMS.includes(platform);
+}
+
+const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+export function textLength(text: string, platform: Platform): number {
+  return RULES[platform].countGraphemes ? [...segmenter.segment(text)].length : [...text].length;
+}
 
 const ACTIVE = ["pending_approval", "scheduled", "publishing", "published"] as const;
 const DUPLICATE_WINDOW_DAYS = 30;
@@ -46,14 +63,15 @@ export function contentHash(text: string, title?: string | null): string {
 export function contentProblems(d: Draft): string[] {
   const r = RULES[d.account.platform];
   const problems: string[] = [];
-  const len = [...d.text].length; // X zählt URLs/Emojis gewichtet – das hier ist eine Näherung
+  const len = textLength(d.text, d.account.platform); // X zählt URLs/Emojis gewichtet – das hier ist eine Näherung
   if (!d.text.trim()) problems.push("Text ist leer.");
   if (len > r.maxChars) problems.push(`Text hat ${len} Zeichen, Limit für ${d.account.platform} ist ${r.maxChars}.`);
-  if (d.kind === "post" && r.needsSubreddit) {
-    if (!d.subreddit) problems.push("Reddit-Post braucht 'subreddit'.");
-    if (!d.title) problems.push("Reddit-Post braucht 'title'.");
+  if (d.kind === "post") {
+    if (r.needsSubreddit && !d.subreddit) problems.push(`${d.account.platform}-Post braucht 'subreddit'.`);
+    if (r.needsTitle && !d.title) problems.push(`${d.account.platform}-Post braucht 'title'.`);
     if (d.title && r.maxTitleChars && d.title.length > r.maxTitleChars) problems.push(`Titel länger als ${r.maxTitleChars} Zeichen.`);
   }
+  if (d.kind === "reply" && r.maxRepliesPerDay === 0) problems.push(`${d.account.platform} unterstützt keine Antworten über die API.`);
   return problems;
 }
 

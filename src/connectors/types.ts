@@ -32,6 +32,14 @@ export interface FetchedReply {
   createdAt: Date;
 }
 
+export interface CredentialField {
+  name: string;
+  label: string;
+  secret?: boolean;
+  placeholder?: string;
+  help?: string;
+}
+
 export interface SocialConnector {
   platform: Platform;
   /** Was die offizielle API mit den beantragten Scopes erlaubt. */
@@ -39,10 +47,17 @@ export interface SocialConnector {
   /** Wie lange vor Ablauf ein Token erneuert wird (Sekunden). */
   refreshWindowSec?: number;
 
-  authorizeUrl(state: string, codeChallenge: string): string;
-  exchangeCode(
+  /** OAuth-Plattformen (X, LinkedIn, Threads, Reddit). */
+  authorizeUrl?(state: string, codeChallenge: string): string;
+  exchangeCode?(
     code: string,
     codeVerifier: string,
+  ): Promise<{ tokens: TokenSet; externalUserId: string; handle: string }>;
+
+  /** Plattformen ohne OAuth (Bluesky: App-Passwort, Dev.to: API-Key) – Formular statt Redirect. */
+  credentialFields?: CredentialField[];
+  connectWithCredentials?(
+    values: Record<string, string>,
   ): Promise<{ tokens: TokenSet; externalUserId: string; handle: string }>;
   refresh?(tokens: TokenSet): Promise<TokenSet>;
 

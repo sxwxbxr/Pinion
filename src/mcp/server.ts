@@ -3,17 +3,16 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getAccount } from "../accounts.js";
-import { env } from "../config.js";
 import { connectors } from "../connectors/index.js";
 import { audit, db } from "../db/client.js";
 import { accounts, inboxItems, postingSlots, posts } from "../db/schema.js";
-import { contentHash, RULES, validateDraft } from "../scheduler/policy.js";
+import { contentHash, postNeedsApproval, RULES, validateDraft } from "../scheduler/policy.js";
 import { fmt, nextFreeSlot } from "../scheduler/slots.js";
 import { INBOX_STATUSES, POST_STATUSES } from "../types.js";
 
 // WICHTIG (stdio): nie auf stdout loggen – nur console.error.
 
-const INSTRUCTIONS = `ReachPilot plant und publiziert Inhalte über offizielle APIs (X, LinkedIn, Threads, Reddit).
+const INSTRUCTIONS = `ReachPilot plant und publiziert Inhalte über offizielle APIs (X, LinkedIn, Threads, Reddit, Bluesky, Dev.to).
 Ablauf: list_accounts → get/set_posting_slots → schedule_post. Antworten: list_inbox → draft_reply.
 Regeln: Schreibe pro Plattform nativen Content (nicht 1:1 crossposten). Antworten werden NIE direkt publiziert,
 sondern landen in der Freigabe-Queue; der Mensch gibt sie mit \`npm run review\` frei. Dieses Tool hat bewusst
@@ -93,7 +92,7 @@ server.registerTool(
     inputSchema: {
       accountId: z.string(),
       text: z.string().min(1),
-      title: z.string().optional().describe("Nur Reddit"),
+      title: z.string().optional().describe("Reddit und Dev.to (Pflicht)"),
       subreddit: z.string().optional().describe("Nur Reddit, ohne 'r/'"),
       at: z.string().datetime({ offset: true }).optional().describe("ISO-8601 mit Offset, z.B. 2026-11-12T08:30:00+01:00"),
     },
@@ -107,7 +106,7 @@ server.registerTool(
     const problems = await validateDraft({ account, kind: "post", text, title, subreddit, scheduledAt });
     if (problems.length) return fail("Nicht geplant:\n- " + problems.join("\n- "));
 
-    const status = env.APPROVAL_MODE === "all" ? "pending_approval" : "scheduled";
+    const status = postNeedsApproval(account.platform) ? "pending_approval" : "scheduled";
     const [row] = await db
       .insert(posts)
       .values({ accountId, kind: "post", text, title, subreddit: subreddit?.replace(/^r\//, ""), scheduledAt, status, contentHash: contentHash(text, title) })

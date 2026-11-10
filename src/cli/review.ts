@@ -85,7 +85,7 @@ function show({ p, a, i }: Row, pos?: string) {
   console.log("─".repeat(70));
   console.log(`${pos ? pos + "  " : ""}${p.id.slice(0, 8)}  [${a.platform}/@${a.handle}]  ${p.kind}  ${fmt(p.scheduledAt, a.timezone)}`);
   if (i) console.log(`  ↳ Antwort auf @${i.authorHandle}: "${i.text.slice(0, 200)}"`);
-  if (p.title) console.log(`  Titel: ${p.title}  (r/${p.subreddit})`);
+  if (p.title) console.log(`  Titel: ${p.title}${p.subreddit ? `  (r/${p.subreddit})` : ""}`);
   console.log(`\n${p.text}\n`);
 }
 

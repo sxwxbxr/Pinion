@@ -18,6 +18,8 @@ Self-hosted Plattform, die über einen MCP-Server Inhalte für X, LinkedIn, Thre
 | **LinkedIn** | Self-Serve „Share on LinkedIn“ (`w_member_social`) | gratis | ✅ eigenes Profil | ❌ ohne Community Management API | ❌ ohne Community Management API |
 | **Threads** | Meta App, Threads-Use-Case | gratis | ✅ (max. 250/24 h) | ✅ (max. 1000/24 h) | ✅ |
 | **Reddit** | Seit Nov. 2025 Antrag nötig (Responsible Builder Policy) | gratis, kommerziell separat | ✅ nach Freigabe | ✅ nach Freigabe | ✅ nach Freigabe |
+| **Bluesky** | App-Passwort, AT Protocol | gratis | ✅ (300 Grapheme) | ✅ | ✅ |
+| **Dev.to** | API-Key | gratis | ✅ Artikel (Markdown) | ❌ API kann Kommentare nur lesen | ✅ |
 
 Konsequenzen:
 - **Reddit-Antrag sofort stellen** (Use Case ehrlich beschreiben: eigener Scheduler, Mensch gibt frei, keine Vote-Manipulation). Bis dahin ist der Connector fertig, aber inaktiv.

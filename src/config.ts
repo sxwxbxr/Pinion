@@ -17,6 +17,12 @@ const Env = z.object({
   AUTH_PORT: z.coerce.number().int().default(8787),
   DEFAULT_TIMEZONE: z.string().default("Europe/Zurich"),
   APPROVAL_MODE: z.enum(["replies", "all"]).default("replies"),
+  // Plattformen, auf denen auch eigene Posts erst nach Freigabe rausgehen (kommagetrennt)
+  APPROVAL_POSTS_PLATFORMS: z
+    .string()
+    .default("reddit,devto")
+    .transform((v) => v.split(",").map((s) => s.trim()).filter(Boolean)),
+  AUTH_HOST: z.string().default("127.0.0.1"),
   WORKER_TICK_SECONDS: z.coerce.number().int().min(5).default(30),
   INBOX_POLL_MINUTES: z.coerce.number().int().min(5).default(15),
   INBOX_POLL_X: bool,
@@ -31,6 +37,7 @@ const Env = z.object({
   REDDIT_CLIENT_ID: z.string().optional(),
   REDDIT_CLIENT_SECRET: z.string().optional(),
   REDDIT_USER_AGENT: z.string().default("web:reachpilot:v0.1.0 (by /u/your_username)"),
+  BLUESKY_SERVICE: z.string().url().default("https://bsky.social"),
 });
 
 // Leere Strings aus .env wie "nicht gesetzt" behandeln

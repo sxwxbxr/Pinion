@@ -1,0 +1,14 @@
+[Unit]
+Description=ReachPilot Datenbank-Backup
+
+[Service]
+Type=oneshot
+User=reachpilot
+Group=reachpilot
+WorkingDirectory=/opt/reachpilot
+ExecStart=/usr/bin/node dist/cli/backup.js
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/reachpilot
